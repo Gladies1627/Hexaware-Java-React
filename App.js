@@ -1,26 +1,51 @@
-// src/App.js
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import React, { useContext } from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
-import Home from './components/Home';
-import Register from './components/Register';
-import Login from './components/Login';
-import UserDashboard from './components/UserDashboard';
-import AdminDashboard from './components/AdminDashboard';
-import Logout from './components/Logout';
+import { AuthProvider, AuthContext } from "./context/AuthContext";
+import Layout from "./Pages/Layout";
+import HomePage from "./Pages/HomePage";
+import OperatorDashboard from "./Pages/OperatorDashboard";
+import PassengerDashboard from "./Pages/PassengerDashboard";
+import AdminDashboard from "./Pages/AdminDashboard";
+import SelectSeats from "./Pages/Passenger/SelectSeats";
+
+
+
+
+
+function AppRoutes() {
+  const { role } = useContext(AuthContext);
+
+  return (
+    <Layout>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+    <Route path="/select-seat/:routeId" element={<SelectSeats />} />
+
+      <Route
+        path="/operator"
+        element={role === "OPERATOR" ? <OperatorDashboard /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/passenger"
+        element={role === "PASSENGER" ? <PassengerDashboard /> : <Navigate to="/" />}
+      />
+      <Route
+        path="/admin"
+        element={role === "ADMIN" ? <AdminDashboard /> : <Navigate to="/" />}
+      />
+    </Routes>
+    </Layout>
+  );
+}
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/user" element={<UserDashboard />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/logout" element={<Logout />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   );
 }
 

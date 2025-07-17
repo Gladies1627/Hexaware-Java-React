@@ -1,96 +1,83 @@
-import React, { useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import './AdminDashboard.css';
-import bg from '../assets/admin.jpg';
+import React, { useEffect, useState, useContext } from "react";
+import { useNavigate } from "react-router-dom";
+import AdminUsersTab from "./Admin/AdminUsersTab";
+import AdminRoutesTab from "./Admin/AdminRoutesTab";
+import AdminBookingsTab from "./Admin/AdminBookingsTab";
+import AdminCancellationsTab from "./Admin/AdminCancellationsTab";
+import { AuthContext } from "../context/AuthContext";
+import "../Pages/AdminDashboard.css";
 
-const AdminDashboard = () => {
-  const [tab, setTab] = useState('add');
-  const [book, setBook] = useState({
-    isbn: '',
-    title: '',
-    author: '',
-    publicationYear: '',
-    genre: '',
-    price: ''
-  });
+function AdminDashboard() {
+  const [activeTab, setActiveTab] = useState("users");
+  const [dashboardData, setDashboardData] = useState(null);
   const navigate = useNavigate();
+  const { token } = useContext(AuthContext);
 
-  const handleChange = e => {
-    setBook({ ...book, [e.target.name]: e.target.value });
-  };
-
-  const fetchBook = async () => {
+  const fetchDashboardData = async () => {
     try {
-      const res = await axios.get(`http://localhost:8080/books/getBook/${book.isbn}`);
-      setBook(res.data);
+      const res = await fetch("http://localhost:8080/api/admin/dashboard", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const data = await res.json();
+      setDashboardData(data);
     } catch (err) {
-      alert('Book not found!');
+      console.error("Failed to fetch dashboard data:", err);
     }
   };
 
-  const handleSubmit = async e => {
-    e.preventDefault();
-    try {
-      if (tab === 'add') {
-        await axios.post('http://localhost:8080/books/addBook', book);
-        alert('Book added successfully!');
-      } else if (tab === 'update') {
-        await axios.put('http://localhost:8080/books/updateBook', book);
-        alert('Book updated successfully!');
-      } else if (tab === 'delete') {
-        await axios.delete(`http://localhost:8080/books/deleteBook/${book.isbn}`);
-        alert('Book deleted successfully!');
-      }
-      setBook({ isbn: '', title: '', author: '', publicationYear: '', genre: '', price: '' });
-    } catch (err) {
-      alert('Operation failed. Check console.');
-      console.error(err);
-    }
-  };
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/');
-  };
+  if (!dashboardData) return <div className="text-center mt-5">Loading...</div>;
 
   return (
-    <div className="admin-dashboard" style={{ backgroundImage: `url(${bg})` }}>
-      <div className="overlay">
-        <div className="top-bar">
-          <h2>Admin Dashboard</h2>
-          <button className="logout-btn" onClick={handleLogout}>Logout</button>
-        </div>
+    <div className="admin-dashboard-bg">
+      {/* Top right logout */}
+      <button
+        className="logout-fixed-btn btn btn-danger"
+        onClick={() => {
+          localStorage.clear();
+          navigate("/");
+        }}
+      >
+        Logout
+      </button>
 
-        <div className="tabs">
-          <button onClick={() => setTab('add')} className={tab === 'add' ? 'active' : ''}>Add Book</button>
-          <button onClick={() => setTab('update')} className={tab === 'update' ? 'active' : ''}>Update Book</button>
-          <button onClick={() => setTab('delete')} className={tab === 'delete' ? 'active' : ''}>Delete Book</button>
-        </div>
+      {/* Center heading */}
+      <h2 className="admin-heading-center">Welcome, Admin</h2>
 
-        <form onSubmit={handleSubmit} className="form">
-          <input name="isbn" value={book.isbn} onChange={handleChange} placeholder="ISBN" required />
+      {/* Glassy container */}
+      <div className="dashboard-container">
+        <ul className="nav nav-tabs justify-content-center mb-4">
+          {["users", "routes", "bookings", "cancellations"].map((tab) => (
+            <li className="nav-item" key={tab}>
+              <button
+                className={`nav-link ${activeTab === tab ? "active" : ""}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            </li>
+          ))}
+        </ul>
 
-         {tab === 'update' && (
-  <button type="button" onClick={fetchBook} className="fetch-btn">Fetch Book</button>
-)}
-
-
-          {(tab === 'add' || tab === 'update') && (
-            <>
-              <input name="title" value={book.title} onChange={handleChange} placeholder="Title" required />
-              <input name="author" value={book.author} onChange={handleChange} placeholder="Author" required />
-              <input name="publicationYear" value={book.publicationYear} onChange={handleChange} placeholder="Year" type="number" required />
-              <input name="genre" value={book.genre} onChange={handleChange} placeholder="Genre" required />
-              <input name="price" value={book.price} onChange={handleChange} placeholder="Price" type="number" required />
-            </>
+        <div className="tab-content">
+          {activeTab === "users" && (
+            <AdminUsersTab users={dashboardData.users} fetchUsers={fetchDashboardData} />
           )}
-
-          <button type="submit">{tab === 'add' ? 'Add' : tab === 'update' ? 'Update' : 'Delete'} Book</button>
-        </form>
+          {activeTab === "routes" && <AdminRoutesTab busRoutes={dashboardData.busRoutes} />}
+          {activeTab === "bookings" && <AdminBookingsTab bookings={dashboardData.bookings || []} />}
+          {activeTab === "cancellations" && (
+            <AdminCancellationsTab cancellations={dashboardData.cancellations || []} />
+          )}
+        </div>
       </div>
     </div>
   );
-};
+}
 
 export default AdminDashboard;
